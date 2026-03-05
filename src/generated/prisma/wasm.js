@@ -134,7 +134,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "/data/proj/agents/gitkm/cloude/lab1/_templateApp/src/generated/prisma",
+      "value": "/tmp/template_components/src/generated/prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -143,17 +143,16 @@ const config = {
     "binaryTargets": [
       {
         "fromEnvVar": null,
-        "value": "debian-openssl-1.1.x",
+        "value": "debian-openssl-3.0.x",
         "native": true
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "/data/proj/agents/gitkm/cloude/lab1/_templateApp/prisma/schema.prisma",
+    "sourceFilePath": "/tmp/template_components/prisma/schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
-    "rootEnvPath": null,
-    "schemaEnvPath": "../../../.env"
+    "rootEnvPath": null
   },
   "relativePath": "../../../prisma",
   "clientVersion": "6.19.2",
@@ -162,6 +161,7 @@ const config = {
     "db"
   ],
   "activeProvider": "sqlite",
+  "postinstall": true,
   "inlineDatasources": {
     "db": {
       "url": {
