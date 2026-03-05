@@ -1,20 +1,10 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  ReactNode,
-  useEffect,
-} from "react";
+import { createContext, useContext, ReactNode, useEffect } from "react";
 import { useChat as useAIChat } from "@ai-sdk/react";
 import { Message } from "ai";
 import { useFileSystem } from "./file-system-context";
 import { setHasAnonWork } from "@/lib/anon-work-tracker";
-
-interface ChatContextProps {
-  projectId?: string;
-  initialMessages?: Message[];
-}
 
 interface ChatContextType {
   messages: Message[];
@@ -30,44 +20,31 @@ export function ChatProvider({
   children,
   projectId,
   initialMessages = [],
-}: ChatContextProps & { children: ReactNode }) {
-  const { fileSystem, handleToolCall } = useFileSystem();
+}: {
+  children: ReactNode;
+  projectId?: string;
+  initialMessages?: Message[];
+}) {
+  const { files, handleToolCall } = useFileSystem();
 
-  const {
-    messages,
-    input,
-    handleInputChange,
-    handleSubmit,
-    status,
-  } = useAIChat({
+  const { messages, input, handleInputChange, handleSubmit, status } = useAIChat({
     api: "/api/chat",
     initialMessages,
-    body: {
-      files: fileSystem.serialize(),
-      projectId,
-    },
+    body: { files, projectId },
     onToolCall: ({ toolCall }) => {
       handleToolCall(toolCall);
     },
   });
 
-  // Track anonymous work
+  // Track anonymous work so it can be migrated when the user signs in
   useEffect(() => {
     if (!projectId && messages.length > 0) {
-      setHasAnonWork(messages, fileSystem.serialize());
+      setHasAnonWork(messages, files);
     }
-  }, [messages, fileSystem, projectId]);
+  }, [messages, files, projectId]);
 
   return (
-    <ChatContext.Provider
-      value={{
-        messages,
-        input,
-        handleInputChange,
-        handleSubmit,
-        status,
-      }}
-    >
+    <ChatContext.Provider value={{ messages, input, handleInputChange, handleSubmit, status }}>
       {children}
     </ChatContext.Provider>
   );
@@ -75,8 +52,6 @@ export function ChatProvider({
 
 export function useChat() {
   const context = useContext(ChatContext);
-  if (context === undefined) {
-    throw new Error("useChat must be used within a ChatProvider");
-  }
+  if (!context) throw new Error("useChat must be used within a ChatProvider");
   return context;
 }

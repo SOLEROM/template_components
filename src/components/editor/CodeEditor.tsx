@@ -1,17 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import Editor from "@monaco-editor/react";
 import { useFileSystem } from "@/lib/contexts/file-system-context";
 import { Code2 } from "lucide-react";
 
 export function CodeEditor() {
   const { selectedFile, getFileContent, updateFile } = useFileSystem();
-  const editorRef = useRef<any>(null);
-
-  const handleEditorDidMount = (editor: any) => {
-    editorRef.current = editor;
-  };
 
   const handleEditorChange = (value: string | undefined) => {
     if (selectedFile && value !== undefined) {
@@ -62,7 +56,6 @@ export function CodeEditor() {
       language={language}
       value={content}
       onChange={handleEditorChange}
-      onMount={handleEditorDidMount}
       theme="vs-dark"
       options={{
         minimap: { enabled: false },

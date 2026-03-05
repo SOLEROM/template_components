@@ -104,7 +104,7 @@ Set `ANTHROPIC_API_KEY` in `.env` and restart the dev server. The app will use C
 
 ### The virtual file system
 
-All generated files live in an **in-memory virtual file system** — nothing is written to your disk. The file tree is visible in the Code tab. When you save a project (requires login), the file system is serialized to the SQLite database.
+All generated files live in an **in-memory virtual file system** (`Record<string, string>`, path → content) held in React state — nothing is written to your disk. Directories are implicit (they exist when files beneath them exist). The file tree is visible in the Code tab. When you save a project (requires login), the file system is serialized to JSON in the SQLite database.
 
 ### Projects and auth
 
@@ -151,9 +151,9 @@ Tools are defined in `src/lib/tools/`. Each tool is a Zod-schema-validated funct
 
 To add a new tool:
 
-1. Create `src/lib/tools/my-tool.ts` — export a `buildMyTool(fileSystem)` function that returns a Vercel AI SDK tool object.
+1. Create `src/lib/tools/my-tool.ts` — export a `buildMyTool(files: Files)` function that returns a Vercel AI SDK `tool()` object. Mutate the `files` object directly inside `execute`.
 2. Import and register it in `src/app/api/chat/route.ts` under the `tools:` key.
-3. Handle its result in `src/lib/contexts/file-system-context.tsx` inside `handleToolCall()`.
+3. Handle its client-side result in `src/lib/contexts/file-system-context.tsx` inside `handleToolCall()`.
 
 ### Change the layout
 
@@ -191,7 +191,7 @@ _templateApp/
 │   │       └── route.ts        # AI streaming endpoint
 │   ├── lib/
 │   │   ├── provider.ts         # AI model + MockLanguageModel
-│   │   ├── file-system.ts      # VirtualFileSystem class
+│   │   ├── file-system.ts      # Files type + pure functions (create/view/replace/insert/delete/rename)
 │   │   ├── auth.ts             # JWT helpers
 │   │   ├── prisma.ts           # Prisma singleton
 │   │   ├── anon-work-tracker.ts
@@ -217,6 +217,9 @@ _templateApp/
 │       ├── HeaderActions.tsx
 │       └── ui/                 # Shadcn/ui primitives
 └── .env                        # Local env vars (not committed)
+```
+
+> **Upgrading from an older version?** Run `npm run db:reset` — the file system storage format changed to a flat `Record<string, string>` and existing project data will not be compatible.
 ```
 
 ---

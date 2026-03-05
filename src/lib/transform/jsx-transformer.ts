@@ -83,7 +83,7 @@ export interface ImportMapResult {
   errors: Array<{ path: string; error: string }>;
 }
 
-export function createImportMap(files: Map<string, string>): ImportMapResult {
+export function createImportMap(files: Record<string, string>): ImportMapResult {
   const imports: Record<string, string> = {
     react: "https://esm.sh/react@19",
     "react-dom": "https://esm.sh/react-dom@19",
@@ -93,13 +93,13 @@ export function createImportMap(files: Map<string, string>): ImportMapResult {
   };
 
   const transformedFiles = new Map<string, string>();
-  const existingFiles = new Set(files.keys());
+  const existingFiles = new Set(Object.keys(files));
   const allImports = new Set<string>();
   const allCssImports = new Set<{ from: string; cssPath: string }>();
   let collectedStyles = "";
   const errors: Array<{ path: string; error: string }> = [];
 
-  for (const [path, content] of files) {
+  for (const [path, content] of Object.entries(files)) {
     if (
       path.endsWith(".js") ||
       path.endsWith(".jsx") ||
@@ -175,7 +175,7 @@ export function createImportMap(files: Map<string, string>): ImportMapResult {
       resolvedPath = resolveRelativePath(fromDir, cssPath);
     }
 
-    if (!files.has(resolvedPath)) {
+    if (!(resolvedPath in files)) {
       collectedStyles += `/* ${cssPath} not found */\n`;
     }
   }
@@ -208,7 +208,7 @@ export function createImportMap(files: Map<string, string>): ImportMapResult {
     ];
 
     for (const variant of variations) {
-      if (imports[variant] || files.has(variant)) {
+      if (imports[variant] || variant in files) {
         found = true;
         break;
       }

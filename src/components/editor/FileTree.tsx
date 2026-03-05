@@ -1,44 +1,60 @@
 "use client";
 
 import { useState } from "react";
-import { FileNode } from "@/lib/file-system";
 import { useFileSystem } from "@/lib/contexts/file-system-context";
-import {
-  ChevronRight,
-  ChevronDown,
-  Folder,
-  FolderOpen,
-  FileCode,
-} from "lucide-react";
+import { ChevronRight, ChevronDown, Folder, FolderOpen, FileCode } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-interface FileTreeNodeProps {
-  node: FileNode;
-  level: number;
+interface TreeNode {
+  name: string;
+  path: string;
+  isDir: boolean;
+  children: TreeNode[];
 }
 
-function FileTreeNode({ node, level }: FileTreeNodeProps) {
-  const { selectedFile, setSelectedFile } = useFileSystem();
-  const [isExpanded, setIsExpanded] = useState(true);
-
-  const handleClick = () => {
-    if (node.type === "directory") {
-      setIsExpanded(!isExpanded);
-    } else {
-      setSelectedFile(node.path);
+function buildTree(files: Record<string, string>): TreeNode[] {
+  // Collect implicit directories from file paths
+  const dirs = new Set<string>();
+  for (const path of Object.keys(files)) {
+    const parts = path.split("/").filter(Boolean);
+    for (let i = 0; i < parts.length - 1; i++) {
+      dirs.add("/" + parts.slice(0, i + 1).join("/"));
     }
-  };
+  }
 
-  const children =
-    node.type === "directory" && node.children
-      ? Array.from(node.children.values()).sort((a, b) => {
-          if (a.type !== b.type) {
-            return a.type === "directory" ? -1 : 1;
-          }
-          return a.name.localeCompare(b.name);
-        })
-      : [];
+  function getChildren(parentPath: string): TreeNode[] {
+    const prefix = parentPath === "/" ? "/" : parentPath + "/";
+    const seen = new Set<string>();
+    const nodes: TreeNode[] = [];
+
+    for (const p of [...dirs, ...Object.keys(files)]) {
+      const rest =
+        parentPath === "/"
+          ? p.slice(1)
+          : p.startsWith(prefix)
+          ? p.slice(prefix.length)
+          : null;
+      if (!rest || rest.includes("/")) continue;
+      if (seen.has(rest)) continue;
+      seen.add(rest);
+      const fullPath = parentPath === "/" ? "/" + rest : prefix + rest;
+      const isDir = dirs.has(fullPath);
+      nodes.push({ name: rest, path: fullPath, isDir, children: isDir ? getChildren(fullPath) : [] });
+    }
+
+    return nodes.sort((a, b) => {
+      if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  return getChildren("/");
+}
+
+function FileTreeNode({ node, level }: { node: TreeNode; level: number }) {
+  const { selectedFile, setSelectedFile } = useFileSystem();
+  const [expanded, setExpanded] = useState(true);
 
   return (
     <div>
@@ -48,16 +64,16 @@ function FileTreeNode({ node, level }: FileTreeNodeProps) {
           selectedFile === node.path && "bg-blue-50 text-blue-600"
         )}
         style={{ paddingLeft: `${level * 12 + 8}px` }}
-        onClick={handleClick}
+        onClick={() => (node.isDir ? setExpanded(!expanded) : setSelectedFile(node.path))}
       >
-        {node.type === "directory" ? (
+        {node.isDir ? (
           <>
-            {isExpanded ? (
+            {expanded ? (
               <ChevronDown className="h-3.5 w-3.5 shrink-0 text-gray-500" />
             ) : (
               <ChevronRight className="h-3.5 w-3.5 shrink-0 text-gray-500" />
             )}
-            {isExpanded ? (
+            {expanded ? (
               <FolderOpen className="h-4 w-4 shrink-0 text-blue-500" />
             ) : (
               <Folder className="h-4 w-4 shrink-0 text-blue-500" />
@@ -71,9 +87,9 @@ function FileTreeNode({ node, level }: FileTreeNodeProps) {
         )}
         <span className="truncate text-gray-700">{node.name}</span>
       </div>
-      {node.type === "directory" && isExpanded && children.length > 0 && (
+      {node.isDir && expanded && (
         <div>
-          {children.map((child) => (
+          {node.children.map((child) => (
             <FileTreeNode key={child.path} node={child} level={level + 1} />
           ))}
         </div>
@@ -83,10 +99,10 @@ function FileTreeNode({ node, level }: FileTreeNodeProps) {
 }
 
 export function FileTree() {
-  const { fileSystem, refreshTrigger } = useFileSystem();
-  const rootNode = fileSystem.getNode("/");
+  const { files } = useFileSystem();
+  const tree = buildTree(files);
 
-  if (!rootNode || !rootNode.children || rootNode.children.size === 0) {
+  if (tree.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-center">
         <Folder className="h-12 w-12 text-gray-300 mb-3" />
@@ -96,18 +112,11 @@ export function FileTree() {
     );
   }
 
-  const rootChildren = Array.from(rootNode.children.values()).sort((a, b) => {
-    if (a.type !== b.type) {
-      return a.type === "directory" ? -1 : 1;
-    }
-    return a.name.localeCompare(b.name);
-  });
-
   return (
     <ScrollArea className="h-full">
-      <div className="py-2" key={refreshTrigger}>
-        {rootChildren.map((child) => (
-          <FileTreeNode key={child.path} node={child} level={0} />
+      <div className="py-2">
+        {tree.map((node) => (
+          <FileTreeNode key={node.path} node={node} level={0} />
         ))}
       </div>
     </ScrollArea>

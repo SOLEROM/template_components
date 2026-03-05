@@ -1,52 +1,29 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { VirtualFileSystem } from "../file-system";
+import { Files, fsRenameFile, fsDeleteFile } from "@/lib/file-system";
 
-export function buildFileManagerTool(fileSystem: VirtualFileSystem) {
+export function buildFileManagerTool(files: Files) {
   return tool({
-    description:
-      'Rename or delete files or folders in the file system. Rename can be used to "move" a file. Rename will recursively create folders as required.',
+    description: "Rename or delete files and directories in the virtual file system.",
     parameters: z.object({
-      command: z
-        .enum(["rename", "delete"])
-        .describe("The operation to perform"),
-      path: z
-        .string()
-        .describe("The path to the file or directory to rename or delete"),
-      new_path: z
-        .string()
-        .optional()
-        .describe("The new path. Only provide when renaming or moving a file."),
+      command: z.enum(["rename", "delete"]).describe("The operation to perform"),
+      path: z.string().describe("Path to the file or directory"),
+      new_path: z.string().optional().describe("New path (for rename only)"),
     }),
     execute: async ({ command, path, new_path }) => {
       if (command === "rename") {
-        if (!new_path) {
-          return {
-            success: false,
-            error: "new_path is required for rename command",
-          };
-        }
-        const success = fileSystem.rename(path, new_path);
-        if (success) {
-          return {
-            success: true,
-            message: `Successfully renamed ${path} to ${new_path}`,
-          };
-        } else {
-          return {
-            success: false,
-            error: `Failed to rename ${path} to ${new_path}`,
-          };
-        }
-      } else if (command === "delete") {
-        const success = fileSystem.deleteFile(path);
-        if (success) {
-          return { success: true, message: `Successfully deleted ${path}` };
-        } else {
-          return { success: false, error: `Failed to delete ${path}` };
-        }
+        if (!new_path) return { success: false, error: "new_path is required for rename" };
+        const success = fsRenameFile(files, path, new_path);
+        return success
+          ? { success: true, message: `Renamed ${path} to ${new_path}` }
+          : { success: false, error: `Failed to rename ${path}` };
       }
-
+      if (command === "delete") {
+        const success = fsDeleteFile(files, path);
+        return success
+          ? { success: true, message: `Deleted ${path}` }
+          : { success: false, error: `Failed to delete ${path}` };
+      }
       return { success: false, error: "Invalid command" };
     },
   });
